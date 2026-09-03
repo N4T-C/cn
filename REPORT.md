@@ -1,131 +1,247 @@
 # Computer Networks Laboratory Project Report
 
----
-
-## **PROJECT TITLE: Distributed Socket-Based Real-Time Communication & Transport Layer Telemetry System**
+## PROJECT TITLE: Distributed Socket-Based Real-Time Communication & Transport Layer Telemetry System
 
 ---
 
-### **1. AIM & OBJECTIVES**
+## 1. AIM & OBJECTIVES
 
-#### **Aim:**
-To design and implement a distributed, real-time client-server communication application across a Local Area Network (LAN), featuring secret-tag identity routing (`#nat`, `#har`, `#ava`, `#group`), connection-oriented reliable messaging (TCP), low-latency datagram streaming (UDP/RTP), and a live draggable Quality of Service (QoS) telemetry inspector.
+### Aim
+To design and implement a distributed, real-time client-server communication application across a Local Area Network (LAN), featuring tag-based identity routing (`#nat`, `#har`, `#ava`, `#group`), reliable WebSocket/TCP messaging, UDP/RTP-style media-stream simulation, controlled packet-loss injection, and an interactive Quality of Service (QoS) analytics console.
 
-#### **Objectives:**
-1. **Multi-Node Routing & Identity Verification:** Implement dynamic node identification using hash-tags (`#nat`, `#har`, `#ava`) allowing direct peer-to-peer and broadcast (`#group`) routing through a central Python WebSocket server.
-2. **Transport Layer Protocol Analysis:** Evaluate performance differences between reliable connection-oriented transport (**TCP**) and low-latency best-effort datagram transport (**UDP**).
-3. **Live QoS Telemetry & Floating Inspector:** Measure Round Trip Time (RTT), RFC 6298 Smoothed RTT, RFC 3550 Interarrival Jitter, Bandwidth Throughput, and Packet Loss in a draggable HUD window.
-4. **Network Fault & Loss Emulation:** Inject simulated packet drop rates ($0\% \text{ to } 50\%$) and observe stream buffer health degradation and TCP Fast Retransmit dynamics.
-5. **Cross-Device Wi-Fi Deployment:** Host the socket server bound to `0.0.0.0:8000` to enable real-time messaging between mobile phones and laptops on the same wireless router.
-
----
-
-### **2. THEORETICAL BACKGROUND & COMPUTER NETWORKS CONCEPTS**
-
-#### **2.1 OSI & TCP/IP Protocol Stack Mapping:**
-| Layer | Protocol / Technology Used | Function in Application |
-| :--- | :--- | :--- |
-| **Application Layer (L7)** | HTTP, WebSocket (RFC 6455), Tag Identity Engine | Channel multiplexing, UI telemetry rendering, message framing |
-| **Transport Layer (L4)** | **TCP** (Reliable Messaging) & **UDP** (Datagram Streaming) | End-to-end reliability, sequence numbers, port routing (`:8000`, `:5004`) |
-| **Network Layer (L3)** | **IPv4** (e.g. `10.33.144.247`, `192.168.1.X`) | Logical addressing and local subnet packet routing |
-| **Data Link & Physical (L2/L1)** | **IEEE 802.11 Wi-Fi / Ethernet** | Medium access control and physical wireless transmission |
+### Objectives
+1. **Multi-Node Routing:** Implement node identification using tags and support direct and group communication through a central Python server.
+2. **Transport-Layer Demonstration:** Demonstrate the reliability/latency trade-off between TCP-based messaging and UDP/RTP-style streaming behavior.
+3. **Live QoS Telemetry:** Measure and visualize RTT, RFC 6298-style Smoothed RTT, RFC 3550-style interarrival jitter, observed throughput, packet loss, congestion-window state, and packet counts.
+4. **Network Fault Simulation:** Inject configurable UDP datagram loss from 0% to 50% and observe the effect on stream health and jitter.
+5. **Interactive Analytics:** Convert raw telemetry into a Network Health Score, protocol distribution, automatic observations, charts, searchable packet traces, and exportable logs.
+6. **Cross-Device LAN Deployment:** Run the central server on `0.0.0.0:8000` and connect browsers from devices on the same Wi-Fi network.
 
 ---
 
-#### **2.2 Mathematical Formulas Implemented in Telemetry Engine:**
+## 2. THEORETICAL BACKGROUND & COMPUTER NETWORKS CONCEPTS
 
-1. **Round Trip Time (RTT) & RFC 6298 Smoothed RTT (SRTT):**
-   $$SRTT_{new} = (1 - \alpha) \cdot SRTT_{old} + \alpha \cdot RTT_{sample} \quad (\text{where } \alpha = 0.125)$$
+### 2.1 OSI & TCP/IP Protocol Stack Mapping
 
-2. **RFC 3550 Interarrival Jitter Calculation:**
-   Given packet transit time difference $D(i-1, i) = (R_i - R_{i-1}) - (S_i - S_{i-1})$:
-   $$J(i) = J(i-1) + \frac{|D(i-1, i)| - J(i-1)}{16}$$
+| Layer | Protocol / Technology | Function in Project |
+|---|---|---|
+| Application | HTTP, WebSocket, HTML/CSS/JavaScript | Chat UI, telemetry dashboard, signaling and API requests |
+| Transport | TCP via WebSocket; UDP/RTP behavior simulation | Reliable chat, sequence/ACK tracking, low-latency stream experiment |
+| Network | IPv4 | LAN addressing and server access |
+| Data Link / Physical | IEEE 802.11 Wi-Fi / Ethernet | Physical LAN connectivity |
 
-3. **Packet Loss Percentage:**
-   $$\text{Packet Loss Rate (\%)} = \left( \frac{\text{Dropped Packets}}{\text{Total Transmitted Packets}} \right) \times 100$$
+> **Implementation note:** Browser WebSockets are carried over TCP. The project's UDP/RTP stream is an application-level transport-behavior simulation: the server applies probabilistic datagram loss and records UDP/RTP-style telemetry while returning the result through the browser's WebSocket connection. This makes the experiment reproducible in a normal browser without requiring a raw-UDP browser API.
 
-4. **Network Throughput (KB/s):**
-   $$\text{Throughput} = \frac{\text{Total Bytes Received (Payload + Headers)}}{\Delta t \times 1024}$$
+### 2.2 TCP vs UDP Comparison
+
+| Parameter | TCP | UDP |
+|---|---|---|
+| Connection | Connection-oriented | Connectionless |
+| Project use | Direct/group chat | Media-stream experiment |
+| Reliability | ACK/retransmission behavior | Best-effort / loss-tolerant behavior |
+| Header overhead used in model | 40 B TCP/IP | 28 B UDP/IP |
+| Main advantage | Reliable delivery | Lower latency / no head-of-line retransmission in the simulated media path |
+| Main trade-off | Retransmission can increase delay | Lost datagrams may create stream artifacts |
+
+### 2.3 QoS Formulas
+
+**Smoothed RTT:**
+
+$$SRTT_{new} = (1 - \alpha)SRTT_{old} + \alpha RTT_{sample}, \quad \alpha = 0.125$$
+
+**RFC 3550-style interarrival jitter:**
+
+$$J(i) = J(i-1) + \frac{|D(i-1,i)| - J(i-1)}{16}$$
+
+**Observed UDP packet loss:**
+
+$$Loss(\%) = \frac{Dropped\ UDP\ Datagrams}{Transmitted\ UDP\ Datagrams} \times 100$$
+
+**Observed throughput:**
+
+$$Throughput = \frac{Bytes\ observed}{Time\ window \times 1024} \quad KB/s$$
 
 ---
 
-### **3. SYSTEM ARCHITECTURE & MULTI-USER ROUTING**
+## 3. SYSTEM ARCHITECTURE
 
+```text
+                         CENTRAL PYTHON SERVER
+                              0.0.0.0:8000
+                    ┌─────────────────────────────┐
+                    │ FastAPI + WebSocket         │
+                    │                             │
+                    │ Tag Registry / Rooms        │
+                    │ TCP SEQ / ACK Telemetry     │
+                    │ UDP/RTP Loss Simulator      │
+                    │ QoS Statistics Engine       │
+                    │ REST Analytics API          │
+                    └──────────────┬──────────────┘
+                                   │
+                         Wi-Fi / LAN IPv4
+                                   │
+                  ┌────────────────┴────────────────┐
+                  │                                 │
+             Browser Node                      Browser Node
+               #nat                              #har/#ava
+                  │                                 │
+        ┌─────────┴─────────┐             ┌─────────┴─────────┐
+        │ Chat / TCP tags   │             │ Chat / Stream     │
+        │ Analytics Console │             │ UDP experiment    │
+        └───────────────────┘             └───────────────────┘
 ```
-                     +---------------------------------------------+
-                     |        CENTRAL SERVER (0.0.0.0:8000)        |
-                     |  - WebSocket Session & Tag Registry         |
-                     |  - TCP Header, SEQ & ACK Tracking Engine    |
-                     |  - UDP Datagram Stream Generator            |
-                     |  - Live Network Telemetry Broadcast         |
-                     +----------------------+----------------------+
-                                            |
-                              Local Wi-Fi Subnet (LAN)
-                                            |
-               +----------------------------+----------------------------+
-               |                                                         |
-+--------------v---------------+                         +---------------v--------------+
-| Node 1: #nat                 |                         | Node 2: #har / #ava          |
-| - PC Browser (localhost:8000)|<======= TCP / UDP =====>| - Mobile Browser (Wi-Fi IP)  |
-| - Direct Channel to #har     |      WebSocket Flow     | - Direct Channel to #nat     |
-| - Floating Telemetry HUD     |                         | - Group Broadcast (#group)   |
-+------------------------------+                         +------------------------------+
-```
 
 ---
 
-### **4. STEP-BY-STEP EXECUTION GUIDE**
+## 4. MAJOR FEATURES IMPLEMENTED
 
-#### **Step 1: Start Central Server**
-```cmd
-cd "C:\Users\natha\Downloads\cn_project"
-python server.py
-```
-*Note the Wi-Fi Local IP address printed in your terminal (e.g. `10.33.144.247:8000`).*
+### 4.1 Real-Time Chat
+- Tag-based direct channels (`#nat`, `#har`, `#ava`).
+- `#group` broadcast room.
+- Image attachment support.
+- Message history stored in memory during server runtime.
+- TCP-style `SEQ`, `ACK`, and RTT metadata shown with messages.
 
-#### **Step 2: Connect User 1 (PC)**
-1. Open browser to `http://localhost:8000`.
-2. Click **`#nat`** or type `#nat` in the access terminal and press **Connect to Network**.
+### 4.2 Network Analytics Console
+The new analytics workspace converts raw counters into meaningful network information:
 
-#### **Step 3: Connect User 2 (Mobile Phone over Wi-Fi)**
-1. Open your phone browser and navigate to `http://<YOUR_LAN_IP>:8000` (e.g. `http://10.33.144.247:8000`).
-2. Click **`#har`** or type `#har` and press **Connect to Network**.
+- **Network Health Score (0–100)**
+- Health classification: Excellent / Good / Degraded / Poor
+- RTT and Smoothed RTT cards
+- RFC 3550-style jitter card
+- Observed throughput card
+- UDP loss card
+- Live QoS timeline
+- Live throughput graph
+- TCP/UDP protocol distribution doughnut chart
+- Packet-volume chart
+- TCP vs UDP trade-off visualization
+- Automatic plain-language network insights
+- Server uptime and active connection count
 
-#### **Step 4: Real-time Communication & Telemetry Inspection**
-1. On `#nat`'s screen, select **`#har`** from the left list (or type `#har` in search) and transmit a message.
-2. Observe instant delivery on `#har`'s phone with TCP `SEQ` and `RTT` latency tags.
-3. Click the **Telemetry** button to open the **Draggable Network Telemetry Window**.
-4. Adjust the **Packet Loss Slider** and observe live fluctuations on the Jitter and Throughput charts.
+### 4.3 Packet Flow Inspector
+The packet inspector now supports:
+- Protocol filtering (TCP / UDP / ALL)
+- Text search
+- Timestamp
+- Packet type
+- Header + payload size
+- Sequence / acknowledgement values
+- RTT
+- Drop/OK status
+- CSV export
+- JSON telemetry export
+- Server-side telemetry reset
+
+### 4.4 Network Fault Injection
+The analytics console provides presets for:
+
+`0% → 15% → 30% → 50%`
+
+The user can also select any value from 0% to 50% using the slider.
+
+The experiment is designed to demonstrate that increased loss can increase observed jitter and reduce stream quality.
+
+### 4.5 TCP Fast Retransmit Demonstration
+A dedicated control simulates a triple-duplicate-ACK fast retransmit event. The telemetry engine increments the retransmission counter and reduces the modeled TCP congestion window by half.
+
+### 4.6 UDP/RTP Stream Playground
+Two modes are exposed:
+- **UDP/RTP:** immediate, loss-tolerant stream behavior.
+- **TCP/Buffered:** reliable-delivery/buffering explanation for comparison.
+
+The stream canvas displays packet/frame activity, current mode, and loss-related visual artifacts.
 
 ---
 
-### **5. EXPERIMENTAL OBSERVATIONS & RESULTS**
+## 5. REST TELEMETRY API
 
-| Transmission Scenario | Transport Protocol | Loss Rate (%) | Avg RTT (ms) | Avg Jitter (ms) | Throughput (KB/s) | Delivery Characteristics |
-| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
-| **Direct Chat (#nat $\leftrightarrow$ #har)** | TCP | 0% | 7.8 ms | 0.9 ms | 42.1 KB/s | Guaranteed delivery, instant ACK |
-| **Group Broadcast (#group)** | TCP | 10% | 19.4 ms | 3.5 ms | 28.6 KB/s | 100% Reliable via Retransmission |
-| **UDP Media Stream (Normal)** | UDP | 0% | 5.4 ms | 1.1 ms | 134.0 KB/s | Smooth 30 FPS, full buffer health |
-| **UDP Media Stream (Loss Injected)** | UDP | 30% | 6.8 ms | 8.2 ms | 88.0 KB/s | Minor frame drop, zero connection stall |
+### `GET /api/stats`
+Returns live telemetry including:
+- TCP/UDP packet counters
+- TCP/UDP byte counters
+- retransmission count
+- UDP dropped/transmitted datagrams
+- RTT and Smoothed RTT
+- jitter
+- simulated loss rate
+- observed UDP loss rate
+- observed throughput
+- modeled TCP congestion window
+- active connections
+- packet history
+- server uptime
+
+### `POST /api/stats/config`
+Used to configure packet-loss simulation and trigger the TCP fast-retransmit demonstration.
+
+### `POST /api/stats/reset`
+Clears packet history and telemetry counters for a fresh experiment.
+
+### `GET /api/health`
+Provides a lightweight server health/status response.
 
 ---
 
-### **6. SCREENSHOT SUBMISSION PLACEHOLDERS**
+## 6. EXPERIMENT PROCEDURE
 
-> **[SCREENSHOT 1: Access Terminal Identity Gateway (#nat, #har, #ava)]**  
-> *(Insert screenshot showing the initial secret code access prompt)*
+### Experiment A — TCP Chat
+1. Start the server.
+2. Open two browser clients.
+3. Connect one as `#nat` and another as `#har`.
+4. Send several messages.
+5. Observe `SEQ`, `ACK`, RTT and TCP packet entries.
+6. Open **Network Analytics** and observe TCP packet volume.
 
-> **[SCREENSHOT 2: Direct Messaging Interface between #nat and #har]**  
-> *(Insert screenshot showing conversation with TCP SEQ numbers and RTT latency pills)*
+### Experiment B — UDP/RTP Loss Behaviour
+1. Open the **UDP / RTP Stream Playground**.
+2. Select UDP/RTP mode.
+3. Set simulated loss to 0%.
+4. Record buffer/stream behaviour.
+5. Increase loss to 15%, 30%, and 50%.
+6. Compare dropped packets, jitter and stream health.
 
-> **[SCREENSHOT 3: Draggable Floating Network Telemetry Window]**  
-> *(Insert screenshot showing live RTT/Jitter charts, Throughput curve, and Packet Inspector log)*
+### Experiment C — TCP Fast Retransmit
+1. Open Network Analytics.
+2. Generate TCP traffic.
+3. Click **Simulate TCP Fast Retransmit**.
+4. Observe the retransmission counter and modeled congestion-window reduction.
 
-> **[SCREENSHOT 4: UDP Media Stream Simulation with Packet Loss Glitch]**  
-> *(Insert screenshot showing stream waveform and buffer health under simulated packet drop)*
+### Experiment D — Exported Packet Trace
+1. Generate chat and stream traffic.
+2. Filter the Packet Flow Inspector by TCP or UDP.
+3. Search for `SYN`, `PSH-ACK`, `RTP_MEDIA`, or `FAST-RETRANSMIT`.
+4. Export the packet trace as CSV or all telemetry as JSON.
 
 ---
 
-### **7. CONCLUSION**
+## 7. EXPECTED OBSERVATIONS
 
-The project successfully demonstrates transport layer protocol behaviors over a local area network. Direct channel routing using unique hash identifiers (`#nat`, `#har`, `#ava`) enables targeted communication without third-party dependencies, while live mathematical telemetry confirms that TCP ensures absolute reliability at the cost of retransmission delay, and UDP maintains low latency for continuous media streaming.
+| Scenario | Expected Observation |
+|---|---|
+| TCP chat, low loss | Low RTT, ACKs visible, reliable message delivery |
+| TCP retransmit simulation | Retransmission counter increases and modeled cwnd decreases |
+| UDP, 0% loss | High stream health and no dropped datagrams |
+| UDP, 15–30% loss | Dropped datagrams and increasing jitter; stream health falls |
+| UDP, 50% loss | Significant loss and visibly degraded stream health |
+
+Actual values depend on generated traffic and runtime conditions and should be recorded from the live dashboard during the final experiment.
+
+---
+
+## 8. SCREENSHOT CHECKLIST
+
+1. **Identity Gateway:** `#nat`, `#har`, `#ava` login options.
+2. **Direct Chat:** message bubbles with SEQ/ACK/RTT metadata.
+3. **Network Analytics:** health score + QoS charts + protocol mix.
+4. **Fault Injection:** 30% or 50% loss with degraded stream health.
+5. **Packet Inspector:** filtered TCP/UDP trace.
+6. **Export:** successful CSV/JSON export.
+
+---
+
+## 9. CONCLUSION
+
+The project demonstrates how transport-layer behaviour can be observed from an interactive real-time communication system. The upgraded analytics console turns raw telemetry into understandable network-health information, while the packet inspector and fault-injection controls make it possible to perform repeatable experiments on RTT, jitter, throughput, packet loss, reliability, and congestion-window behaviour.
+
+The central design also highlights the fundamental transport trade-off: reliable TCP-style communication is suitable for messages where correctness matters, whereas loss-tolerant UDP/RTP-style behaviour is useful for real-time media where timely delivery is often more important than retransmitting every missing datagram.

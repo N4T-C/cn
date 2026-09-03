@@ -3,373 +3,188 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>NetChat &bull; Real-Time Protocol & Telemetry System</title>
+  <meta name="theme-color" content="#07111f">
+  <title>NetChat • Protocol Lab</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body class="dark-theme">
 
-  <!-- 1. Identity Gateway Access Modal -->
   <div class="login-overlay" id="login-modal">
     <div class="login-card">
-      <div class="terminal-icon-box">
-        <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
-          <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-1 14H5c-.55 0-1-.45-1-1V7c0-.55.45-1 1-1h14c.55 0 1 .45 1 1v10c0 .55-.45 1-1 1zM7.5 15l3.5-3-3.5-3 1.42-1.42L13.84 12l-4.92 4.42L7.5 15zm6 0h4v2h-4v-2z"/>
-        </svg>
-      </div>
-      <h2>NetChat Access Terminal</h2>
-      <p class="login-desc">Select or enter your identity tag to register on the central node.</p>
-      
+      <div class="login-orbit"><span></span><strong>NC</strong></div>
+      <div class="eyebrow">COMPUTER NETWORKS • L4 LAB</div>
+      <h1>NetChat <span>Protocol Lab</span></h1>
+      <p class="login-desc">A real-time chat and transport-layer telemetry playground. Connect a node and watch packets, QoS and protocol behaviour live.</p>
       <div class="quick-tags-row">
-        <button type="button" class="tag-quick-btn" onclick="selectQuickTag('#nat')">#nat</button>
-        <button type="button" class="tag-quick-btn" onclick="selectQuickTag('#har')">#har</button>
-        <button type="button" class="tag-quick-btn" onclick="selectQuickTag('#ava')">#ava</button>
+        <button class="tag-quick-btn" onclick="selectQuickTag('#nat')">#nat</button>
+        <button class="tag-quick-btn" onclick="selectQuickTag('#har')">#har</button>
+        <button class="tag-quick-btn" onclick="selectQuickTag('#ava')">#ava</button>
       </div>
-
       <div class="input-group">
-        <input type="text" id="user-tag-input" placeholder="e.g. #nat, #har, #ava" autocomplete="off" autofocus>
+        <label for="user-tag-input">Node identity</label>
+        <input type="text" id="user-tag-input" placeholder="#nat" autocomplete="off" autofocus>
       </div>
-      <button type="button" class="btn-connect" id="btn-login-connect">Connect to Network</button>
+      <button class="btn-connect" id="btn-login-connect"><span>Connect to network</span><b>→</b></button>
+      <div class="login-foot"><span class="status-led good"></span> Central telemetry node :8000</div>
     </div>
   </div>
 
-  <!-- 2. Main App Shell Layout (Horizontal Flex Container) -->
-  <div class="app-shell" id="app-shell" style="display: none;">
-
-    <!-- Leftmost Utility Navbar -->
+  <div class="app-shell" id="app-shell" style="display:none;">
     <nav class="app-navbar">
-      <div class="nav-brand" title="NetChat Node">NC</div>
-      
+      <div class="nav-brand" title="NetChat">NC</div>
       <div class="nav-actions">
-        <button type="button" class="nav-icon-btn active" id="tab-chats-btn" title="Messages">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-          </svg>
-        </button>
-
-        <button type="button" class="nav-icon-btn" id="tab-stream-btn" title="UDP Media Stream">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
-          </svg>
-        </button>
-
-        <button type="button" class="nav-icon-btn telemetry-btn" id="open-telemetry-btn" title="Open Telemetry Window">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
-          </svg>
-        </button>
+        <button class="nav-icon-btn active" id="tab-chats-btn" title="Messages">⌁</button>
+        <button class="nav-icon-btn" id="tab-stream-btn" title="UDP media stream">▶</button>
+        <button class="nav-icon-btn telemetry-btn" id="tab-analytics-btn" title="Network analytics">◉</button>
       </div>
-
-      <div class="my-badge-pill" id="my-active-tag">#nat</div>
+      <div class="nav-node">
+        <span class="active-dot"></span>
+        <span id="my-active-tag">#nat</span>
+      </div>
     </nav>
 
-    <!-- Sidebar Contacts & Channels List -->
     <aside class="sidebar-inbox">
       <div class="inbox-topbar">
-        <div class="user-identity-box">
-          <span class="active-dot"></span>
-          <span class="identity-name" id="display-user-tag">#nat</span>
+        <div>
+          <div class="eyebrow">NETCHAT NODE</div>
+          <div class="identity-name" id="display-user-tag">#nat</div>
         </div>
+        <div class="mini-status"><span class="active-dot"></span><span id="nav-network-status">CONNECTING</span></div>
       </div>
-
-      <!-- Search target #tag -->
       <div class="search-wrap">
-        <div class="search-box">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" class="search-svg">
-            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-          </svg>
-          <input type="text" id="target-tag-search" placeholder="Search / Direct Tag (e.g. #har)">
-        </div>
+        <div class="search-box"><span>⌕</span><input id="target-tag-search" type="text" placeholder="Search or enter #tag"></div>
       </div>
-
-      <!-- Contact Items List -->
       <div class="contact-list" id="contact-list-container">
-        
-        <!-- Broadcast Group -->
+        <div class="section-label">CHANNELS</div>
         <div class="contact-card active-card" data-tag="#group">
-          <div class="contact-avatar group-av">GRP</div>
-          <div class="contact-details">
-            <div class="contact-row">
-              <span class="contact-title">#group (All Nodes)</span>
-              <span class="contact-time">Live</span>
-            </div>
-            <span class="contact-sub" id="last-msg-group">Broadcast room</span>
-          </div>
+          <div class="contact-avatar group-av">ALL</div>
+          <div class="contact-details"><div class="contact-row"><span class="contact-title">#group</span><span class="contact-time">LIVE</span></div><span class="contact-sub" id="last-msg-group">Broadcast room</span></div>
         </div>
-
-        <!-- Direct Channel #har -->
+        <div class="section-label">NODES</div>
         <div class="contact-card" data-tag="#har">
-          <div class="contact-avatar">HAR</div>
-          <div class="contact-details">
-            <div class="contact-row">
-              <span class="contact-title">#har</span>
-              <span class="node-status-dot" id="status-har"></span>
-            </div>
-            <span class="contact-sub" id="last-msg-har">Direct Channel</span>
-          </div>
+          <div class="contact-avatar">HAR</div><div class="contact-details"><div class="contact-row"><span class="contact-title">#har</span><span class="node-status-dot" id="status-har"></span></div><span class="contact-sub" id="last-msg-har">Direct TCP channel</span></div>
         </div>
-
-        <!-- Direct Channel #ava -->
         <div class="contact-card" data-tag="#ava">
-          <div class="contact-avatar">AVA</div>
-          <div class="contact-details">
-            <div class="contact-row">
-              <span class="contact-title">#ava</span>
-              <span class="node-status-dot" id="status-ava"></span>
-            </div>
-            <span class="contact-sub" id="last-msg-ava">Direct Channel</span>
-          </div>
+          <div class="contact-avatar">AVA</div><div class="contact-details"><div class="contact-row"><span class="contact-title">#ava</span><span class="node-status-dot" id="status-ava"></span></div><span class="contact-sub" id="last-msg-ava">Direct TCP channel</span></div>
         </div>
-
-        <!-- Direct Channel #nat -->
         <div class="contact-card" data-tag="#nat">
-          <div class="contact-avatar">NAT</div>
-          <div class="contact-details">
-            <div class="contact-row">
-              <span class="contact-title">#nat</span>
-              <span class="node-status-dot" id="status-nat"></span>
-            </div>
-            <span class="contact-sub" id="last-msg-nat">Direct Channel</span>
-          </div>
+          <div class="contact-avatar">NAT</div><div class="contact-details"><div class="contact-row"><span class="contact-title">#nat</span><span class="node-status-dot" id="status-nat"></span></div><span class="contact-sub" id="last-msg-nat">Direct TCP channel</span></div>
         </div>
-
       </div>
+      <div class="sidebar-foot"><span>ACTIVE NODES</span><strong id="active-node-count">0</strong></div>
     </aside>
 
-    <!-- Main Workspace (Spans entire remaining area) -->
     <main class="main-workspace">
-      
-      <!-- 1. Active Chat Window -->
-      <div class="workspace-view active-workspace" id="chat-workspace">
+      <section class="workspace-view" id="chat-workspace">
         <header class="workspace-header">
           <div class="target-meta">
-            <div class="avatar-circle" id="active-target-avatar">GRP</div>
-            <div>
-              <h3 id="active-target-title">#group (All Connected Nodes)</h3>
-              <p class="target-status-label" id="target-connection-status">TCP Connection Active &bull; Port 8000</p>
-            </div>
+            <div class="avatar-circle" id="active-target-avatar">ALL</div>
+            <div><h3 id="active-target-title">#group</h3><p id="active-target-subtitle">Broadcast channel • all connected nodes</p><p id="target-connection-status"><span class="status-led good"></span> ONLINE <span class="mono-sep">•</span> WebSocket / TCP :8000</p></div>
           </div>
-
           <div class="header-tools">
-            <button type="button" class="tool-btn" id="btn-call-audio" title="Start Audio Call (UDP/RTP)">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
-              </svg>
-            </button>
-            <button type="button" class="tool-btn" id="btn-call-video" title="Start Video Call (UDP/RTP)">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-              </svg>
-            </button>
-            <button type="button" class="tool-btn highlight" id="btn-toggle-telemetry-window" title="Toggle Floating Telemetry HUD">
-              Telemetry HUD
-            </button>
+            <button class="tool-btn" id="btn-call-audio" title="Audio call">☎</button>
+            <button class="tool-btn" id="btn-call-video" title="Video call">▣</button>
+            <button class="tool-btn highlight" id="btn-toggle-telemetry-window">Telemetry HUD</button>
           </div>
         </header>
-
-        <!-- Message Feed Area -->
-        <div class="chat-feed" id="chat-feed-container">
-          <div class="time-stamp-divider">CHANNEL INITIALIZED &bull; TCP TRANSPORT LAYER</div>
+        <div class="chat-feed" id="chat-feed-container"><div class="time-stamp-divider"><span></span> CHANNEL INITIALIZED • TCP TRANSPORT LAYER <span></span></div></div>
+        <div class="attachment-preview-bar" id="attachment-preview-bar" style="display:none;">
+          <div class="preview-thumb-box"><img id="image-preview-thumb" src="" alt="preview"><button class="btn-cancel-attach" id="btn-cancel-attachment">×</button></div>
+          <span class="attach-filename" id="attach-file-info">Ready for TCP transmission</span>
         </div>
-
-        <!-- Pending Image Attachment Preview Bar -->
-        <div class="attachment-preview-bar" id="attachment-preview-bar" style="display: none;">
-          <div class="preview-thumb-box">
-            <img id="image-preview-thumb" src="" alt="preview">
-            <button type="button" class="btn-cancel-attach" id="btn-cancel-attachment">&times;</button>
-          </div>
-          <span class="attach-filename" id="attach-file-info">Image attached (Ready to transmit)</span>
-        </div>
-
-        <!-- Chat Input Bar -->
         <footer class="chat-footer">
           <div class="msg-input-wrap">
-            <!-- Hidden File Input for Image Upload -->
-            <input type="file" id="image-file-input" accept="image/*" style="display: none;">
-            
-            <button type="button" class="btn-attach" id="btn-trigger-upload" title="Attach Image / Media Packet">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-              </svg>
-            </button>
-
-            <input type="text" id="chat-msg-input" placeholder="Type a message... (Press Enter to transmit)" autocomplete="off">
-            <button type="button" class="btn-send-packet" id="btn-send-chat">Transmit</button>
+            <input type="file" id="image-file-input" accept="image/*" hidden>
+            <button class="btn-attach" id="btn-trigger-upload" title="Attach image">＋</button>
+            <input type="text" id="chat-msg-input" placeholder="Transmit a message…" autocomplete="off">
+            <button class="btn-send-packet" id="btn-send-chat">SEND <span>↗</span></button>
           </div>
         </footer>
-      </div>
+      </section>
 
-      <!-- 2. Media Stream View -->
-      <div class="workspace-view" id="stream-workspace" style="display: none;">
-        <div class="stream-panel">
-          <div class="stream-header-info">
-            <h2>Real-Time UDP / Datagram Media Stream</h2>
-            <p>Demonstrating packet framing, transmission latency, and loss tolerance over wireless LAN.</p>
-          </div>
-
+      <section class="workspace-view" id="stream-workspace" style="display:none;">
+        <div class="stream-panel page-pad">
+          <div class="page-heading"><div><div class="eyebrow">TRANSPORT LAB</div><h2>UDP / RTP Stream Playground</h2><p>Compare low-latency datagrams with reliable TCP buffering while injecting controlled packet loss.</p></div><div class="live-chip"><span class="live-pulse"></span><span id="stream-live-state">LIVE</span></div></div>
           <div class="stream-content-grid">
-            <div class="canvas-holder">
-              <canvas id="stream-canvas" width="400" height="280"></canvas>
+            <div class="canvas-holder glass-card">
+              <canvas id="stream-canvas" width="640" height="360"></canvas>
               <div class="canvas-bottom-bar">
-                <button type="button" class="btn-stream-mode active" id="btn-mode-udp">UDP Mode (Fast)</button>
-                <button type="button" class="btn-stream-mode" id="btn-mode-tcp">TCP Mode (Buffered)</button>
-                <button type="button" class="btn-stream-pause" id="btn-stream-toggle">Pause</button>
+                <button class="btn-stream-mode active" id="btn-mode-udp">UDP / RTP</button>
+                <button class="btn-stream-mode" id="btn-mode-tcp">TCP / BUFFERED</button>
+                <button class="btn-stream-pause" id="btn-stream-toggle">Pause</button>
               </div>
             </div>
-
-            <div class="stream-stats-card">
-              <h4>Transport Channel Telemetry</h4>
-              <div class="stat-line">
-                <span>Protocol:</span>
-                <strong class="tag-blue" id="stream-protocol-tag">UDP / RTP</strong>
+            <div class="stream-stats-card glass-card">
+              <div class="card-kicker">STREAM TELEMETRY</div>
+              <h3 id="stream-protocol-tag">UDP / RTP</h3>
+              <p id="stream-mode-explanation">Packets are delivered immediately; loss can create visible artifacts without head-of-line blocking.</p>
+              <div class="stream-stat-grid">
+                <div><span>TX packets</span><strong id="stream-tx-packets">0</strong></div>
+                <div><span>RX packets</span><strong id="stream-rx-packets">0</strong></div>
+                <div><span>Dropped</span><strong id="stream-dropped-stat">0 (0.0%)</strong></div>
+                <div><span>Bitrate</span><strong id="stream-bitrate-stat">0 kbps</strong></div>
               </div>
-              <div class="stat-line">
-                <span>Rx Packets:</span>
-                <strong id="stream-rx-packets">0</strong>
-              </div>
-              <div class="stat-line">
-                <span>Dropped Chunks:</span>
-                <strong class="text-danger" id="stream-dropped-stat">0 (0.0%)</strong>
-              </div>
-              <div class="stat-line">
-                <span>Bitrate:</span>
-                <strong id="stream-bitrate-stat">1,280 kbps</strong>
-              </div>
-              
-              <div class="buffer-bar-box">
-                <label>Buffer Stream Health</label>
-                <div class="stream-progress">
-                  <div class="stream-progress-fill" id="stream-buffer-fill" style="width: 100%;"></div>
-                </div>
-              </div>
+              <div class="buffer-box"><div class="buffer-head"><span>Buffer health</span><strong id="stream-health-number">100%</strong></div><div class="stream-progress"><div class="stream-progress-fill good" id="stream-buffer-fill"></div></div></div>
+              <div class="cn-note"><b>Why UDP?</b><span>Real-time media prefers timeliness over retransmitting every lost datagram.</span></div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
+      <section class="workspace-view analytics-workspace" id="analytics-workspace" style="display:none;">
+        <div class="analytics-page">
+          <header class="analytics-topbar">
+            <div><div class="eyebrow">OBSERVABILITY CONSOLE</div><h2>Network Analytics</h2><p>Live interpretation of the transport-layer telemetry generated by your NetChat traffic.</p></div>
+            <div class="analytics-actions"><button class="secondary-btn" id="btn-refresh-health">↻ Refresh</button><button class="secondary-btn" id="btn-export-json">Export JSON</button><button class="primary-btn" id="btn-export-csv">Export CSV</button></div>
+          </header>
+
+          <div class="health-hero glass-card">
+            <div class="health-ring" id="health-ring"><div><strong id="health-score">100</strong><span>/ 100</span></div></div>
+            <div class="health-copy"><div class="card-kicker">NETWORK HEALTH</div><h3 id="health-label">EXCELLENT</h3><p id="health-summary">Generate traffic to populate a live network health assessment.</p><div class="health-tags"><span>RTT <b id="rtt-badge" class="metric-badge good">Low</b></span><span>Jitter <b id="jitter-badge" class="metric-badge good">Stable</b></span><span>Loss <b id="loss-badge" class="metric-badge good">Minimal</b></span><span>Throughput <b id="throughput-badge" class="metric-badge good">Strong</b></span></div></div>
+            <div class="health-side"><span>SERVER UPTIME</span><strong id="server-uptime">0s</strong><span>ACTIVE CONNECTIONS</span><strong id="val-active-connections">0</strong></div>
+          </div>
+
+          <div class="analytics-kpi-grid">
+            <div class="analytics-kpi"><span>Round Trip Time</span><strong><b id="val-rtt">7.4</b> ms</strong><small id="val-srtt">SRTT 8.0 ms • RFC 6298</small></div>
+            <div class="analytics-kpi"><span>Interarrival Jitter</span><strong><b id="val-jitter">1.0</b> ms</strong><small>RFC 3550 estimate</small></div>
+            <div class="analytics-kpi"><span>Observed Throughput</span><strong><b id="val-throughput">0.0</b> KB/s</strong><small id="val-cwnd">TCP cwnd 64 KB</small></div>
+            <div class="analytics-kpi"><span>UDP Packet Loss</span><strong><b id="val-loss">0.0</b>%</strong><small id="val-loss-count">0 / 0 UDP datagrams</small></div>
+          </div>
+
+          <div class="chart-grid-large">
+            <div class="chart-card glass-card wide"><div class="chart-title"><div><span>QoS timeline</span><small>RTT vs jitter • live</small></div><span class="legend-inline"><i class="dot-cyan"></i>RTT <i class="dot-orange"></i>Jitter</span></div><div class="canvas-wrap"><canvas id="rttChart"></canvas></div></div>
+            <div class="chart-card glass-card wide"><div class="chart-title"><div><span>Throughput</span><small>Observed bytes / second</small></div></div><div class="canvas-wrap"><canvas id="throughputChart"></canvas></div></div>
+            <div class="chart-card glass-card"><div class="chart-title"><div><span>Protocol mix</span><small>Packets observed</small></div></div><div class="donut-wrap"><canvas id="protocolChart"></canvas><div class="donut-center"><strong id="tcp-share-center">0%</strong><span>TCP share</span></div></div><div class="protocol-bars"><div><span><i class="dot-cyan"></i>TCP <b id="tcp-share">0%</b></span><em><i id="tcp-share-bar"></i></em></div><div><span><i class="dot-purple"></i>UDP <b id="udp-share">0%</b></span><em><i id="udp-share-bar"></i></em></div></div></div>
+            <div class="chart-card glass-card"><div class="chart-title"><div><span>Packet volume</span><small>Cumulative live counters</small></div></div><div class="canvas-wrap"><canvas id="packetRateChart"></canvas></div></div>
+          </div>
+
+          <div class="compare-grid">
+            <div class="compare-card glass-card"><div class="card-kicker">TRANSPORT TRADE-OFF</div><h3>TCP vs UDP</h3><p class="muted">The same network can favour different protocols depending on the application.</p><div class="compare-row"><div class="compare-label"><b>Reliability</b><span>TCP</span></div><div class="compare-bar"><i style="width:95%"></i></div><strong>High</strong></div><div class="compare-row"><div class="compare-label"><b>Latency</b><span>UDP</span></div><div class="compare-bar purple"><i style="width:88%"></i></div><strong>Low</strong></div><div class="compare-row"><div class="compare-label"><b>Retransmission</b><span>TCP</span></div><div class="compare-bar"><i style="width:92%"></i></div><strong>Yes</strong></div><div class="compare-row"><div class="compare-label"><b>Loss tolerance</b><span>UDP</span></div><div class="compare-bar purple"><i style="width:80%"></i></div><strong>High</strong></div></div>
+            <div class="compare-card glass-card"><div class="card-kicker">LIVE INTERPRETATION</div><h3>What is happening?</h3><div class="insight-score" id="insight-score">100/100 health score</div><ul class="insight-list" id="insight-list"><li><span class="insight-icon">›</span>Generate chat or stream traffic to populate insights.</li></ul></div>
+          </div>
+
+          <div class="experiment-card glass-card"><div class="experiment-copy"><div class="card-kicker">FAULT INJECTION</div><h3>Packet-loss experiment</h3><p>Inject loss into UDP traffic and observe how jitter, buffer health and delivery quality respond.</p><div class="preset-row"><button data-loss-preset="0">0%</button><button data-loss-preset="15">15%</button><button data-loss-preset="30">30%</button><button data-loss-preset="50">50%</button></div></div><div class="experiment-control"><div class="slider-head"><span>Simulated UDP loss</span><strong id="loss-slider-label">0%</strong></div><input type="range" id="sim-loss-slider" min="0" max="50" step="5" value="0"><div class="loss-scale"><span>Stable</span><span>Stress</span><span>Severe</span></div><div class="loss-impact" id="loss-impact-label">No injected loss</div><button class="danger-outline" id="btn-retransmit-trigger">⚡ Simulate TCP Fast Retransmit</button></div></div>
+
+          <div class="packet-inspector glass-card"><div class="inspector-header"><div><div class="card-kicker">PACKET TRACE</div><h3>Packet Flow Inspector</h3></div><div class="inspector-actions"><input id="packet-search" placeholder="Filter packets…"><select id="packet-protocol-filter"><option>ALL</option><option>TCP</option><option>UDP</option></select><button class="secondary-btn" id="btn-clear-packet-logs">Reset</button></div></div><div class="table-scroll"><table class="inspector-table"><thead><tr><th>Time</th><th>Proto</th><th>Type</th><th>Size</th><th>Seq / Ack</th><th>RTT</th><th>Status</th></tr></thead><tbody id="inspector-tbody"><tr><td colspan="7" class="empty-table">Waiting for packets…</td></tr></tbody></table></div></div>
+
+          <div class="counter-strip glass-card"><div><span>TCP packets</span><strong id="val-tcp-packets">0</strong></div><div><span>UDP packets</span><strong id="val-udp-packets">0</strong></div><div><span>TCP bytes</span><strong id="val-tcp-bytes">0 B</strong></div><div><span>UDP bytes</span><strong id="val-udp-bytes">0 B</strong></div><div><span>Fast retransmits</span><strong id="val-retransmissions">0</strong></div></div>
+        </div>
+      </section>
     </main>
-
   </div>
 
-  <!-- 3. Floating Draggable Network Telemetry Window -->
-  <div class="telemetry-window" id="draggable-telemetry" style="display: none;">
-    <!-- Drag Handle Bar -->
-    <div class="telemetry-header" id="telemetry-drag-handle">
-      <div class="telemetry-title">
-        <span class="live-pulse"></span>
-        <h4>Network Protocol Telemetry HUD</h4>
-      </div>
-      <div class="window-controls">
-        <button type="button" class="win-btn" id="btn-minimize-telemetry">&minus;</button>
-        <button type="button" class="win-btn" id="btn-close-telemetry">&times;</button>
-      </div>
-    </div>
-
-    <!-- Telemetry Body -->
+  <div class="telemetry-window" id="draggable-telemetry" style="display:none;">
+    <div class="telemetry-header" id="telemetry-drag-handle"><div class="telemetry-title"><span class="live-pulse" id="telemetry-live-dot"></span><h4>Live Telemetry HUD</h4></div><div class="window-controls"><button class="win-btn" id="btn-minimize-telemetry">−</button><button class="win-btn" id="btn-close-telemetry">×</button></div></div>
     <div class="telemetry-body" id="telemetry-content">
-      
-      <!-- KPI Stats Grid -->
-      <div class="kpi-grid">
-        <div class="kpi-box">
-          <span class="kpi-label">Latency / RTT</span>
-          <div class="kpi-val"><span id="val-rtt">7.4</span> <small>ms</small></div>
-          <span class="kpi-note" id="val-srtt">Smoothed: 8.0 ms</span>
-        </div>
-
-        <div class="kpi-box">
-          <span class="kpi-label">Jitter (RFC 3550)</span>
-          <div class="kpi-val"><span id="val-jitter">1.0</span> <small>ms</small></div>
-          <span class="kpi-note">Interarrival variance</span>
-        </div>
-
-        <div class="kpi-box">
-          <span class="kpi-label">Throughput</span>
-          <div class="kpi-val"><span id="val-throughput">42.0</span> <small>KB/s</small></div>
-          <span class="kpi-note" id="val-cwnd">TCP cwnd: 64 KB</span>
-        </div>
-
-        <div class="kpi-box">
-          <span class="kpi-label">Packet Loss Rate</span>
-          <div class="kpi-val text-success"><span id="val-loss">0.0</span> <small>%</small></div>
-          <span class="kpi-note" id="val-loss-count">0 dropped</span>
-        </div>
-      </div>
-
-      <!-- Live Graphs -->
-      <div class="charts-grid">
-        <div class="chart-card">
-          <h5>Latency & Jitter Dynamics (ms)</h5>
-          <div class="canvas-wrap"><canvas id="rttChart"></canvas></div>
-        </div>
-        <div class="chart-card">
-          <h5>Live Throughput Stream (KB/s)</h5>
-          <div class="canvas-wrap"><canvas id="throughputChart"></canvas></div>
-        </div>
-      </div>
-
-      <!-- Fault Injection -->
-      <div class="injection-panel">
-        <div class="slider-row">
-          <div class="slider-labels">
-            <span>Simulate UDP Packet Loss Rate:</span>
-            <strong id="loss-slider-label">0%</strong>
-          </div>
-          <input type="range" id="sim-loss-slider" min="0" max="50" step="5" value="0">
-        </div>
-        <div class="injection-actions">
-          <button type="button" class="btn-act" id="btn-retransmit-trigger">Trigger TCP Retransmit (Triple Duplicate ACK)</button>
-        </div>
-      </div>
-
-      <!-- Packet Flow Inspector Log Table -->
-      <div class="packet-inspector">
-        <div class="inspector-header">
-          <h5>Packet Flow Inspector (L3 / L4 Trace)</h5>
-          <button type="button" class="btn-clear" id="btn-clear-packet-logs">Clear Log</button>
-        </div>
-        <div class="table-scroll">
-          <table class="inspector-table">
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Proto</th>
-                <th>Flags</th>
-                <th>Size</th>
-                <th>Seq/Ack</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="inspector-tbody">
-              <!-- Rendered dynamically -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-
+      <div class="mini-health"><div class="mini-ring"><strong id="hud-health">—</strong></div><div><span>Network condition</span><strong id="hud-condition">Waiting…</strong></div></div>
+      <div class="kpi-grid"><div class="kpi-box"><span class="kpi-label">RTT</span><div class="kpi-val"><span id="hud-rtt">—</span><small> ms</small></div></div><div class="kpi-box"><span class="kpi-label">Jitter</span><div class="kpi-val"><span id="hud-jitter">—</span><small> ms</small></div></div><div class="kpi-box"><span class="kpi-label">Throughput</span><div class="kpi-val"><span id="hud-throughput">—</span><small> KB/s</small></div></div><div class="kpi-box"><span class="kpi-label">UDP Loss</span><div class="kpi-val"><span id="hud-loss">—</span><small>%</small></div></div></div>
     </div>
   </div>
 
-  <!-- 4. Voice / Video Call Dialog Modal -->
-  <div class="call-dialog" id="call-dialog" style="display: none;">
-    <div class="call-box">
-      <div class="call-av" id="call-target-av">#har</div>
-      <h3 id="call-target-tag">#har</h3>
-      <p class="call-status" id="call-dialog-status">Connected &bull; UDP / RTP</p>
+  <div class="call-dialog" id="call-dialog" style="display:none;"><div class="call-box"><div class="call-av" id="call-target-av">HAR</div><div class="eyebrow">RTP SIGNALING</div><h3 id="call-target-tag">#har</h3><p class="call-status" id="call-dialog-status">Audio call • UDP / RTP signaling</p><div class="audio-waves"><span></span><span></span><span></span><span></span><span></span></div><button class="btn-call-hangup" id="btn-hangup-call">End call</button></div></div>
 
-      <div class="audio-waves">
-        <span class="wave"></span>
-        <span class="wave"></span>
-        <span class="wave"></span>
-        <span class="wave"></span>
-        <span class="wave"></span>
-      </div>
-
-      <div class="call-actions-row">
-        <button type="button" class="btn-call-hangup" id="btn-hangup-call">End Call</button>
-      </div>
-    </div>
-  </div>
-
+  <div id="toast-host" class="toast-host"></div>
   <script src="app.js"></script>
 </body>
 </html>
