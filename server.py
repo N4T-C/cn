@@ -34,7 +34,7 @@ network_stats = {
     "packet_history": []
 }
 
-# Tag to WebSocket mapping (normalized lowercase e.g. "#nat")
+# Tag to WebSocket registry
 user_sockets: Dict[str, WebSocket] = {}
 socket_users: Dict[WebSocket, str] = {}
 client_seq_counters: Dict[str, int] = {}
@@ -57,7 +57,6 @@ def get_lan_ip():
 def get_channel_key(user1: str, user2: str) -> str:
     if user2 == "#group" or user1 == "#group" or user2 == "all":
         return "#group"
-    # Canonical sorted pair key e.g. "#har_#nat"
     pair = sorted([user1.lower(), user2.lower()])
     return f"{pair[0]}_{pair[1]}"
 
@@ -123,7 +122,6 @@ async def websocket_endpoint(websocket: WebSocket):
     client_ip = websocket.client.host if websocket.client else "127.0.0.1"
     user_tag = ""
     
-    # TCP 3-Way Handshake
     record_packet("TCP", "SYN", client_ip, "Server:8000", 0, seq=100)
     record_packet("TCP", "SYN-ACK", "Server:8000", client_ip, 0, seq=500, ack=101)
     record_packet("TCP", "ACK", client_ip, "Server:8000", 0, seq=101, ack=501)
@@ -134,7 +132,7 @@ async def websocket_endpoint(websocket: WebSocket):
             data = json.loads(data_text)
             msg_type = data.get("type")
             
-            # User registration with tag (#nat, #har, #ava)
+            # User registration
             if msg_type == "login":
                 raw_tag = data.get("tag", "").strip().lower()
                 user_tag = raw_tag if raw_tag.startswith("#") else f"#{raw_tag}"
@@ -145,9 +143,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 socket_users[websocket] = user_tag
                 network_stats["active_connections"] = len(user_sockets)
                 
-                print(f"[+] Client logged in: {user_tag} from {client_ip}. Active users: {list(user_sockets.keys())}")
+                print(f"[+] Client registered: {user_tag}. Active: {list(user_sockets.keys())}")
                 
-                # Send login confirmation
+                # Acknowledge login
                 await websocket.send_text(json.dumps({
                     "type": "login_success",
                     "tag": user_tag,
@@ -155,7 +153,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     "active_users": list(user_sockets.keys())
                 }))
                 
-                # Broadcast updated user presence list
+                # Broadcast updated user list to ALL connected sockets
                 user_list_payload = json.dumps({
                     "type": "user_status",
                     "active_users": list(user_sockets.keys())
@@ -169,18 +167,23 @@ async def websocket_endpoint(websocket: WebSocket):
                 
             # Chat message / Image packet (TCP Reliable Delivery)
             if msg_type == "chat":
-                sender = socket_users.get(websocket, user_tag)
+                sender = data.get("sender") or socket_users.get(websocket, user_tag)
+                if not sender.startswith("#"):
+                    sender = f"#{sender}"
+                # Ensure socket is mapped
+                user_sockets[sender] = websocket
+                socket_users[websocket] = sender
+                
                 raw_rec = data.get("recipient", "#group").strip().lower()
                 recipient = raw_rec if raw_rec.startswith("#") else f"#{raw_rec}"
                 content = data.get("content", "")
                 image_data = data.get("image", None)
-                msg_kind = data.get("kind", "text") # "text" or "image"
+                msg_kind = data.get("kind", "text")
                 sent_ts = data.get("client_timestamp", time.time() * 1000)
                 
                 client_seq = client_seq_counters.get(sender, 1000) + 1
                 client_seq_counters[sender] = client_seq
                 
-                # Payload length
                 payload_len = len(image_data) if image_data else len(content.encode('utf-8'))
                 calc_rtt = max(2.0, round((time.time() * 1000 - sent_ts), 1))
                 
@@ -202,7 +205,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     "rtt_ms": calc_rtt
                 }
                 
-                # Save to memory store
+                # Save to history store
                 if channel_key not in message_store:
                     message_store[channel_key] = []
                 message_store[channel_key].append(msg_payload)
@@ -232,7 +235,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     except Exception:
                         pass
                         
-                # Send TCP ACK confirmation back to sender
+                # Send TCP ACK
                 try:
                     await websocket.send_text(json.dumps({
                         "type": "tcp_ack",
@@ -248,7 +251,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 target = data.get("target", "#group").strip().lower()
                 if not target.startswith("#"):
                     target = f"#{target}"
-                ch_key = get_channel_key(user_tag, target)
+                current_sender = socket_users.get(websocket, user_tag)
+                ch_key = get_channel_key(current_sender, target)
                 history = message_store.get(ch_key, [])
                 await websocket.send_text(json.dumps({
                     "type": "history_response",
@@ -263,7 +267,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 chunk_size = data.get("chunk_size", 1400)
                 is_dropped = random.random() < network_stats["simulated_loss_rate"]
                 
-                record_packet("UDP", "RTP_MEDIA", "StreamServer:5004", f"{user_tag}:UDP", chunk_size, seq=chunk_index, dropped=is_dropped)
+                record_packet("UDP", "RTP_MEDIA", "StreamNode:5004", f"{user_tag}:UDP", chunk_size, seq=chunk_index, dropped=is_dropped)
                 
                 await websocket.send_text(json.dumps({
                     "type": "udp_chunk_response",
@@ -290,7 +294,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         if websocket in socket_users:
             disconnected_tag = socket_users.pop(websocket)
-            if disconnected_tag in user_sockets:
+            if disconnected_tag in user_sockets and user_sockets[disconnected_tag] == websocket:
                 del user_sockets[disconnected_tag]
             network_stats["active_connections"] = len(user_sockets)
             record_packet("TCP", "FIN-ACK", disconnected_tag, "Server:8000", 0)
