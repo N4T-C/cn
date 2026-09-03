@@ -1,8 +1,10 @@
 // ==========================================================================
-// NetChat Protocol & Telemetry Client Engine (Guaranteed Login & Message Delivery)
+// NetChat Protocol & Telemetry Client Engine (Robust Reconnect & No Flicker)
 // ==========================================================================
 
 let ws = null;
+let isConnecting = false;
+let reconnectTimer = null;
 let myUserTag = "";
 let activeTargetTag = "#group";
 let attachedImageBase64 = null;
@@ -21,7 +23,7 @@ let timeLabels = [];
 let rttChart = null;
 let throughputChart = null;
 
-// Determine backend HTTP and WebSocket URLs (supports https / wss on Render & localhost)
+// Determine backend HTTP and WebSocket URLs (Render HTTPS/WSS and Localhost)
 function getApiBaseUrl() {
   if (window.location.protocol === "file:" || !window.location.host) {
     return "http://localhost:8000";
@@ -46,7 +48,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initStreamCanvas();
   startTelemetryPolling();
 
-  // Check URL query parameters (e.g. ?user=#nat)
   const params = new URLSearchParams(window.location.search);
   const tagParam = params.get("user") || params.get("tag");
   if (tagParam) {
@@ -54,7 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// 1. Identity Gateway Login (Guaranteed WebSocket Binding)
+// 1. Identity Gateway Login
 function selectQuickTag(tag) {
   document.getElementById("user-tag-input").value = tag;
   attemptLogin();
@@ -69,51 +70,61 @@ function attemptLogin() {
   document.getElementById("display-user-tag").textContent = myUserTag;
   document.getElementById("my-active-tag").textContent = myUserTag;
 
-  // Hide login modal and show main app shell
   document.getElementById("login-modal").style.display = "none";
   document.getElementById("app-shell").style.display = "flex";
 
-  // Force (re)connect WebSocket and send login payload
   connectWebSocketWithTag(myUserTag);
 }
 
-// 2. WebSocket Connection Management
+// 2. WebSocket Connection Management (With Anti-Flicker Guard)
 function connectWebSocketWithTag(tag) {
-  const wsUrl = getWsUrl();
-  console.log(`[TCP Socket] Initiating connection to ${wsUrl} as ${tag}...`);
+  if (isConnecting) return;
 
-  if (ws) {
-    try {
-      if (ws.readyState === WebSocket.OPEN) {
-        console.log(`[TCP Socket] Already open. Sending login registration for ${tag}`);
-        ws.send(JSON.stringify({ type: "login", tag: tag }));
-        requestChannelHistory(activeTargetTag);
-        return;
-      }
-      ws.close();
-    } catch (e) {}
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    console.log(`[TCP Socket] Already connected. Sending login registration for ${tag}`);
+    ws.send(JSON.stringify({ type: "login", tag: tag }));
+    requestChannelHistory(activeTargetTag);
+    return;
   }
 
-  ws = new WebSocket(wsUrl);
+  isConnecting = true;
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+
+  const wsUrl = getWsUrl();
+  console.log(`[TCP Socket] Connecting to ${wsUrl} as ${tag}...`);
+  document.getElementById("target-connection-status").textContent = "Connecting to Central Node...";
+
+  try {
+    ws = new WebSocket(wsUrl);
+  } catch (err) {
+    console.error("[TCP Connection Error]:", err);
+    isConnecting = false;
+    scheduleReconnect();
+    return;
+  }
 
   ws.onopen = () => {
+    isConnecting = false;
     console.log(`[TCP Connection Established] Registering tag: ${myUserTag}`);
-    document.getElementById("target-connection-status").textContent = `TCP Socket Online • Node Connected`;
+    document.getElementById("target-connection-status").textContent = `TCP Socket Active • ${myUserTag} -> ${activeTargetTag}`;
 
-    // Explicitly send login registration
-    ws.send(JSON.stringify({
-      type: "login",
-      tag: myUserTag
-    }));
+    if (myUserTag) {
+      ws.send(JSON.stringify({
+        type: "login",
+        tag: myUserTag
+      }));
+    }
 
-    // Flush any pending message queue
+    // Flush any pending queue
     while (messageQueue.length > 0) {
       const pending = messageQueue.shift();
       pending.sender = myUserTag;
       ws.send(JSON.stringify(pending));
     }
 
-    // Request channel history
     requestChannelHistory(activeTargetTag);
   };
 
@@ -127,16 +138,26 @@ function connectWebSocketWithTag(tag) {
   };
 
   ws.onclose = () => {
-    console.warn("[TCP Socket] Connection closed. Reconnecting in 1.5s...");
-    document.getElementById("target-connection-status").textContent = "Reconnecting to Central Node...";
-    setTimeout(() => {
-      if (myUserTag) connectWebSocketWithTag(myUserTag);
-    }, 1500);
+    isConnecting = false;
+    console.warn("[TCP Socket] Connection closed. Scheduling reconnect...");
+    document.getElementById("target-connection-status").textContent = "Connection paused • Reconnecting...";
+    scheduleReconnect();
   };
 
   ws.onerror = (e) => {
-    console.warn("[TCP Socket Error]:", e);
+    isConnecting = false;
+    console.warn("[TCP Socket Warning]:", e);
   };
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer) return;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    if (myUserTag) {
+      connectWebSocketWithTag(myUserTag);
+    }
+  }, 2500);
 }
 
 function handleServerPacket(data) {
@@ -159,7 +180,7 @@ function handleServerPacket(data) {
 
 // 3. User Presence & Channel Routing
 function updateActiveUserIndicators(activeUsers) {
-  console.log("[User Presence List]:", activeUsers);
+  console.log("[Active Users List]:", activeUsers);
   ["#har", "#ava", "#nat"].forEach(tag => {
     const clean = tag.replace('#', '');
     const dot = document.getElementById(`status-${clean}`);
@@ -187,7 +208,6 @@ function switchActiveTarget(rawTag) {
   document.getElementById("active-target-avatar").textContent = av;
   document.getElementById("target-connection-status").textContent = `TCP Socket Active • Route: ${myUserTag} -> ${tag}`;
 
-  // Request chat history for this channel
   requestChannelHistory(tag);
 }
 
@@ -259,14 +279,13 @@ function sendChatMessage() {
   };
 
   if (!ws || ws.readyState !== WebSocket.OPEN) {
-    console.warn("WebSocket buffering packet, attempting immediate reconnection...");
+    console.warn("WebSocket buffering packet, queueing...");
     messageQueue.push(payload);
     connectWebSocketWithTag(myUserTag);
   } else {
     ws.send(JSON.stringify(payload));
   }
 
-  // Clear inputs
   input.value = "";
   if (attachedImageBase64) {
     attachedImageBase64 = null;
@@ -276,9 +295,6 @@ function sendChatMessage() {
 }
 
 function renderIncomingMessage(msg) {
-  console.log("[Incoming Chat Packet]:", msg);
-
-  // Check if message belongs to current open view
   const isDirectMatch = (msg.recipient === myUserTag && msg.sender === activeTargetTag) || (msg.sender === myUserTag && msg.recipient === activeTargetTag);
   const isGroupMatch = (msg.recipient === "#group" && activeTargetTag === "#group");
 
@@ -286,7 +302,6 @@ function renderIncomingMessage(msg) {
     appendMessageElement(msg);
   }
 
-  // Update preview snippet in left contact list
   const snippetTarget = msg.recipient === "#group" ? "group" : (msg.sender === myUserTag ? msg.recipient.replace('#', '') : msg.sender.replace('#', ''));
   const lastMsgEl = document.getElementById(`last-msg-${snippetTarget}`);
   if (lastMsgEl) {
